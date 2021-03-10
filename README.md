@@ -45,10 +45,10 @@ $ busted -c && luacov && less luacov.report.out
 
 ## Usage
 redis-client is split into four modules which provide functionality at increasingly higher levels:
-- [redis-client.protocol](#-redis-clientprotocol) handles the encoding/decoding of messages between redis server and client.
-- [redis-client.response](#-redis-clientresponse) deals with formatting of the data returned by the redis server.
-- [redis-client.redis](#-redis-clientredis) manages the network communications and synchronisation between multiple users (co-routines) of a single client connection.
-- [redis-client](#-redis-client) performs high-level transaction handling, validation of commands and command-dependent response manipulation.
+- [redis-client.protocol](#redis-clientprotocol) handles the encoding/decoding of messages between redis server and client.
+- [redis-client.response](#redis-clientresponse) deals with formatting of the data returned by the redis server.
+- [redis-client.redis](#redis-clientredis) manages the network communications and synchronisation between multiple users (co-routines) of a single client connection.
+- [redis-client](#redis-client) performs high-level transaction handling, validation of commands and command-dependent response manipulation.
 
 ### Error Handling
 There are two types of errors within this library: soft- and hard errors.  A soft error is one that is reported by the redis server itself -- there was no error within the library or the protocol, but the server didn't like what it received; soft errors are not managed by the library but are reported as valid data responses, as described below.  A hard error is something that prevented the library from completing an operation and is reported directly to the caller.
