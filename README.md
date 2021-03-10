@@ -129,7 +129,7 @@ ok, err_type, err_msg = redis_client.protocol.send_command(file, { 'get', 'strin
 ok, err_type, err_msg = redis_client.protocol.read_response(file)
 ```
 ```file```: an object that behaves like a Lua ```file``` object, providing ```read```, ```write``` and ```flush``` functions.
-returns a table containing the response data (see [Response Handling](#-response-handling) or ```nil, err_type, err_msg``` on failure.
+returns a table containing the response data (see [Response Handling](#response-handling) or ```nil, err_type, err_msg``` on failure.
 
 ## redis-client.response
 
@@ -143,4 +143,4 @@ redis_client.response.new = function(cmd, options, args, type, data)
   }
 end
 ```
-```cmd```, ```options``` and ```args``` are the (uppercased) command, options and arguments that were given as part of the redis command.  ```type``` and ```data``` are as described above in [Response Handling](#-response-handling).
+```cmd```, ```options``` and ```args``` are the (uppercased) command, options and arguments that were given as part of the redis command.  ```type``` and ```data``` are as described above in [Response Handling](#response-handling).
