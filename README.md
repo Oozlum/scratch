@@ -62,6 +62,21 @@ All library functions report hard errors by returning ```nil, err_type, err_msg`
 
 'SOCKET' and 'PROTOCOL' errors are generally unrecoverable and require you to close and re-establish the connection to the server.
 
+### Custom Error Handlers
+
+Custom error handler functions can be provided at various points in the library to override default behaviour.  An error handler is called with two arguments ```err_type``` and ```err_msg``` as described above.  All return values of the error handler are passed back to the original caller, assuming the error handler returns at all.  Examples:
+```lua
+-- an error handler that raises a Lua error.
+function my_error_handler(err_type, err_msg)
+  error(err_type .. ' ' .. err_msg)
+end
+
+-- an error handler that formats the error as a single string
+function my_special_handler(err_type, err_msg)
+  return nil, err_type .. ' ' .. err_msg
+end
+```
+
 ### Response Handling
 All redis commands return a value that is of one of the following types:
 - STATUS
@@ -116,8 +131,10 @@ This module is responsible for encoding/decoding messages on the wire.
 ok, err_type, err_msg = redis_client.protocol.send_command(file, args)
 ```
 ```file```: an object that behaves like a Lua ```file``` object, providing ```read```, ```write``` and ```flush``` functions.
+
 ```args```: a array of strings/integers containing the redis command and arguments.
-returns ```true``` or ```nil, err_type, err_msg``` on failure.
+
+Returns ```true``` or ```nil, err_type, err_msg``` on failure.
 
 Example:
 ```lua
@@ -129,7 +146,8 @@ ok, err_type, err_msg = redis_client.protocol.send_command(file, { 'get', 'strin
 ok, err_type, err_msg = redis_client.protocol.read_response(file)
 ```
 ```file```: an object that behaves like a Lua ```file``` object, providing ```read```, ```write``` and ```flush``` functions.
-returns a table containing the response data (see [Response Handling](#response-handling) or ```nil, err_type, err_msg``` on failure.
+
+Returns a table containing the response data (see [Response Handling](#response-handling) or ```nil, err_type, err_msg``` on failure.
 
 ## redis-client.response
 
@@ -143,4 +161,81 @@ redis_client.response.new = function(cmd, options, args, type, data)
   }
 end
 ```
-```cmd```, ```options``` and ```args``` are the (uppercased) command, options and arguments that were given as part of the redis command.  ```type``` and ```data``` are as described above in [Response Handling](#response-handling).
+```cmd```, ```options``` and ```args``` are the (uppercased) command, options and arguments that were given as part of the redis command.
+
+```type``` and ```data``` are as described above in [Response Handling](#response-handling).
+
+## redis-client.redis
+
+This module provides low-level redis functionality, establishing a network connection and providing a client object that can be used to perform actions on a redis server.
+
+### redis-client.redis.new
+```lua
+client, err_type, err_msg = redis_client.redis.new(socket, error_handler)
+```
+```socket```: a cqueues socket object that is connected to the redis server.
+
+```error_handler```: (optional) the error handler function that should be used for this client by default, overriding the module default.  See [Custom Error Handlers](#custom-error-handlers).
+
+Returns a client object or ```nil, err_type, err_msg``` on failure.
+
+### redis-client.redis.connect
+```lua
+client, err_type, err_msg = redis_client.redis.connect(host, port, error_handler)
+```
+```host```: (optional, default: '127.0.0.1') a resolvable hostname or IP address that will be used to connect to the redis server.
+
+```port```: (optional, default: 6379) the listening port of the redis server.
+
+```error_handler```: (optional) the error handler function that should be used for this client by default, overriding the module default.  See [Custom Error Handlers](#custom-error-handlers).
+
+Returns a client object or ```nil, err_type, err_msg``` on failure.
+
+### redis-client.redis.error\_handler
+
+The default error handler used by client objects.  See [Custom Error Handlers](#custom-error-handlers).
+
+### client:call
+```lua
+response, err_type, err_msg = client:call(...)
+```
+
+```client:call``` expects two tables, the first containing options for the call and the second containing the redis command and arguments.  This function tries to be flexible; it can be called in many ways and it will try to do the right thing:
+```lua
+client:call('ping') -- client:call({}, {'ping'})
+client:call('ping', {options}) -- client:call({options}, {'ping'})
+client:call('get', 'string') -- client:call({}, {'get', 'string'})
+client:call({options}, 'get', 'string') -- client:call({options}, {'get', 'string'})
+client:call('get', {options}, 'string') -- client:call({options}, {'get', 'string'})
+client:call('lrange', {options}, {0, -1}) -- client:call({options}, {'lrange', 0, -1})
+```
+
+```client:call``` will issue the request to the redis server and wait for a response.  On error it will call the appropriate error handler or return ```nil, err_type, err_msg``` to the caller.
+
+```options.error_handler```: the error handler to be used for this call.
+```options.response_renderer```: the response renderer to be used for this call.
+```options.whitelist```: a table of allowable redis commands, e.g. ```{ 'GET', 'PING' }```.  If present, any commands not in this list will be rejected.
+```options.blacklist```: a table of disallowed redis commands, e.g. ```{ 'GET', 'PING' }```.  If present, any commands in this list will be rejected.
+
+### client:next\_publication
+```lua
+response, err_type, err_msg = client:next_publication(options)
+```
+
+```options.timeout```: The amount of time the function will wait before giving up.
+```options.error_handler```: the error handler to be used for this call.
+```options.response_renderer```: the response renderer to be used for this call.
+
+```client:next_publication``` will wait for a publication to be received from the server.  If ```options.timeout``` is not given, it will wait indefinitely.  Errors will be handled as above.  On timeout, an empty redis array will be returned.
+
+### client:close
+```lua
+client:close()
+```
+
+Closes the client and ends the server connection.
+
+### client.error\_handler
+
+The default error handler used for calls made using this client.  Initially set on creation, can be replaced at any time.
+
